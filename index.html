@@ -76,13 +76,14 @@
         .top-controls {
             display: flex;
             align-items: center;
-            gap: 16px;
+            gap: 12px;
         }
 
         .global-status {
             font-size: 12px;
             color: var(--text-muted);
             font-family: Consolas, monospace;
+            margin-right: 4px;
         }
 
         /* Grid System */
@@ -288,6 +289,82 @@
             letter-spacing: 0.5px;
             text-transform: uppercase;
         }
+
+        /* About Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(4px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            max-width: 480px;
+            width: 90%;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+            user-select: text;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 12px;
+        }
+
+        .modal-header h2 {
+            font-size: 16px;
+            color: var(--accent-color);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin: 0;
+        }
+
+        .modal-body {
+            font-size: 13px;
+            line-height: 1.6;
+            color: #ccc;
+        }
+
+        .modal-body a {
+            color: var(--accent-color);
+            text-decoration: none;
+            word-break: break-all;
+        }
+
+        .modal-body a:hover {
+            text-decoration: underline;
+        }
+
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            padding-top: 12px;
+            border-top: 1px solid var(--border-color);
+        }
     </style>
 </head>
 <body>
@@ -300,6 +377,7 @@
         </div>
         <div class="top-controls">
             <span id="global-status" class="global-status">WebMIDI Disconnected</span>
+            <button id="btn-about">About</button>
             <button id="btn-connect-midi" class="btn-primary">Connect WebMIDI</button>
         </div>
     </header>
@@ -313,6 +391,29 @@
         </div>
     </main>
 
+    <!-- About Modal Dialog -->
+    <div class="modal-overlay" id="about-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>About</h2>
+                <button class="btn-icon" id="btn-close-modal" title="Close">✕</button>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: 12px;">
+                    This application is a multi-device monitor derivative of the work done by Jakob Bak:
+                </p>
+                <p>
+                    <a href="https://github.com/jakobbak/screendump" target="_blank" rel="noopener noreferrer">
+                        https://github.com/jakobbak/screendump
+                    </a>
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button id="btn-modal-ok" class="btn-primary" style="padding: 6px 18px;">OK</button>
+            </div>
+        </div>
+    </div>
+
 <script>
     // ========================================================================
     // ELEKTRON PROTOCOL CONSTANTS
@@ -323,7 +424,7 @@
     const CMD_REQ = 0x04;
     const CMD_RESP = 0x84;
 
-    // [0x10, 0x00] works across Model:Samples, DT1, DT2, DN1, DN2, Syntakt
+    // Standard Universal Digi/Model family ident [0x10, 0x00]
     const UNIVERSAL_ELEKTRON_IDENT = [0x10, 0x00];
 
     const THEMES = {
@@ -383,12 +484,10 @@
         if (sysex[0] !== SYSEX_START || sysex[sysex.length - 1] !== SYSEX_END) {
             throw new Error("Invalid framing");
         }
-        // Verify Elektron Manufacturer ID
         if (sysex[1] !== 0x00 || sysex[2] !== 0x20 || sysex[3] !== 0x3C) {
             throw new Error("Non-Elektron message");
         }
 
-        // Decode payload (ignoring bytes 4 and 5 so any echoing model ID succeeds)
         const body = decode7(sysex.slice(6, sysex.length - 1));
         if (body.length < 5 || body[4] !== CMD_RESP) {
             throw new Error("Unexpected reply byte");
@@ -471,7 +570,7 @@
                     name: cleanName || inPort.name,
                     inPort: inPort,
                     outPort: matchedOut,
-                    ident: UNIVERSAL_ELEKTRON_IDENT // Standard [0x10, 0x00]
+                    ident: UNIVERSAL_ELEKTRON_IDENT
                 });
             }
         });
@@ -658,7 +757,7 @@
                         this.pendingResolve = null;
                         resolve(null);
                     }
-                }, 800); // 800ms timeout
+                }, 800);
             });
 
             this.currentPair.outPort.send(req);
@@ -794,8 +893,35 @@
             this.btnConnectMidi = document.getElementById("btn-connect-midi");
             this.lblGlobalStatus = document.getElementById("global-status");
 
+            // About Modal elements
+            this.btnAbout = document.getElementById("btn-about");
+            this.aboutModal = document.getElementById("about-modal");
+            this.btnCloseModal = document.getElementById("btn-close-modal");
+            this.btnModalOk = document.getElementById("btn-modal-ok");
+
             this.btnConnectMidi.addEventListener("click", () => this.initMIDI());
             this.btnAddTile.addEventListener("click", () => this.addCard());
+
+            // Modal events
+            this.btnAbout.addEventListener("click", () => this.openAbout());
+            this.btnCloseModal.addEventListener("click", () => this.closeAbout());
+            this.btnModalOk.addEventListener("click", () => this.closeAbout());
+            this.aboutModal.addEventListener("click", (e) => {
+                if (e.target === this.aboutModal) this.closeAbout();
+            });
+            window.addEventListener("keydown", (e) => {
+                if (e.key === "Escape" && this.aboutModal.classList.contains("active")) {
+                    this.closeAbout();
+                }
+            });
+        }
+
+        openAbout() {
+            this.aboutModal.classList.add("active");
+        }
+
+        closeAbout() {
+            this.aboutModal.classList.remove("active");
         }
 
         async initMIDI() {
@@ -824,6 +950,7 @@
 
         scanDevices() {
             this.pairedDevices = getMatchedPairs(this.midiAccess);
+            // Updated text to "# Midi Device(s) Detected"
             this.lblGlobalStatus.textContent = `${this.pairedDevices.length} Midi Device(s) Detected`;
             this.cards.forEach(card => card.updateDeviceDropdown());
         }
