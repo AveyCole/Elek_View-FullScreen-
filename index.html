@@ -431,6 +431,7 @@
         white:    { bg: [18, 18, 18],   fg: [255, 255, 255] },
         amber:    { bg: [20, 16, 8],    fg: [255, 175, 0] },
         green:    { bg: [10, 24, 10],   fg: [0, 255, 102] },
+        blue:     { bg: [10, 18, 26],   fg: [80, 200, 255] },
         inverted: { bg: [240, 240, 240], fg: [15, 15, 15] }
     };
 
@@ -628,6 +629,7 @@
                             <option value="white" selected>OLED White</option>
                             <option value="amber">Amber</option>
                             <option value="green">Green</option>
+                            <option value="blue">Light Blue</option>
                             <option value="inverted">Inverted</option>
                         </select>
                         <div style="flex-grow: 1;"></div>
@@ -661,7 +663,7 @@
             this.dom.btnStart.addEventListener("click", () => this.toggleStream());
             this.dom.btnClose.addEventListener("click", () => this.manager.removeCard(this.id));
             this.dom.btnSnap.addEventListener("click", () => this.captureFrame());
-
+            
             this.dom.btnCopy.addEventListener("click", () => this.copyToClipboard());
             this.dom.btnSave.addEventListener("click", () => this.saveImage());
         }
