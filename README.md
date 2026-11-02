@@ -1,4 +1,4 @@
-[url=https://bluesgl.github.io/Elek_View/]https://bluesgl.github.io/Elek_View/[/url] < Be sure not to have any other program accessing midi (DAWs/Electron Transfer/other webmidi/etc) 
+https://bluesgl.github.io/Elek_View/ < Be sure not to have any other program accessing midi (DAWs/Electron Transfer/other webmidi/etc) 
 Tested with a DT2 and M:C but should work for other devices too.
 
 This is requesting then displaying the current screen data via a built in debug sysex command. 
